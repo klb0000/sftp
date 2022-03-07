@@ -44,27 +44,31 @@ func handleConn(c net.Conn) {
 	defer c.Close()
 	for {
 		fmt.Fprintf(os.Stdin, "listening for command...\n")
-		cmd, arg := parseCommand(c)
+		cmd, arg := listenForCommand(c)
 		fmt.Fprintf(os.Stdout, "%s %s\n", commandCode[cmd], arg)
-		time.Sleep(2 * time.Second)
+		time.Sleep(1 * time.Second)
 		funcs[cmd](c, string(arg))
 	}
 }
 
 func sendFile(c net.Conn, fileName string) {
 	f, err := os.Open(fileName)
-	handleError(err)
+	if err != nil {
+		log.Fatal(err)
+	}
 	io.Copy(c, f)
 	f.Close()
 }
 
-func recieveFile(c net.Conn, fileName string) {
-	f, err := os.Create(fileName)
-	handleError(err)
-	io.Copy(f, c)
+func recieveFile(conn net.Conn, fileName string) {
+	file, err := os.Create(fileName)
+	if err != nil {
+		log.Fatal(err)
+	}
+	io.Copy(file, conn)
 }
 
-func parseCommand(c net.Conn) (byte, string) {
+func listenForCommand(c net.Conn) (byte, string) {
 	cmd := make([]byte, 2)
 	c.Read(cmd)
 	arg := make([]byte, int(cmd[1]))
