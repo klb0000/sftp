@@ -1,168 +1,169 @@
-package fileserver
+package sftp
 
 import (
+	"bytes"
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net"
 	"os"
 )
 
-// type FileServer interface {
-// 	Listen(network string, addr string) (net.Listener, error)
-// }
+// type that statisfies both request and response
+type RequestResponse interface {
+	Request
+	Response
+}
 
-type FileServer struct {
+type Server interface {
+	Serve()
+
+	Listen() (net.Conn, error)
+	// Close closes the listener.
+	// Any blocked Accept operations will be unblocked and return errors.
+	Close() error
+	// Addr returns the listener's network address.
+	Addr() net.Addr
+}
+
+type fileServer struct {
 	net.Listener
 }
 
-func NewServer(addr string) (*FileServer, error) {
+func NewFileServer(addr string) (Server, error) {
 	listner, err := net.Listen("tcp", addr)
-	return &FileServer{listner}, err
+	return &fileServer{listner}, err
 }
 
-func (s *FileServer) Serve() {
+func (s *fileServer) Listen() (net.Conn, error) {
+	return s.Accept()
+}
+
+func (s *fileServer) Serve() {
 	for {
 		conn, err := s.Accept()
 		if err != nil {
-			logError("", err)
+			log.Println(err)
 			continue
 		}
 
-		fmt.Fprintf(os.Stdout, "new connection %s\n", conn)
+		fmt.Fprintf(os.Stdout, "new connection %v\n", conn)
 		go handleConn(conn)
 	}
 }
 
-// func main() {
-// 	listener, err := net.Listen("tcp", "localhost:8000")
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-// 	for {
-// 		conn, err := listener.Accept()
-// 		if err != nil {
-// 			log.Print(err)
-// 		}
-// 		go handleConn(conn)
-// 	}
-
-func logError(msg string, err error) {
-	if len(msg) > 1 {
-		fmt.Fprint(os.Stderr, msg)
-	}
-	fmt.Fprintf(os.Stderr, "%s\n", err)
-}
-
 func handleConn(c net.Conn) {
 	defer c.Close()
-	for {
-		req, err := ListenIncomingRequest(c)
-		if err != nil {
-			logError(" bad request", err)
-			continue
-		}
 
-		if err = handleRequest(req, c); err != nil {
-			logError(" unable to handle request", err)
-		}
-
-	}
-
-	// for {
-	// 	fmt.Fprintf(os.Stdout, "listening for command...\n")
-	// 	cmd, arg := listenForCommand(c)
-	// 	fmt.Fprintf(os.Stdout, "%s %s\n", commandCode[cmd], arg)
-	// 	time.Sleep(1 * time.Second)
-	// 	funcs[cmd](c, string(arg))
-	// }
-}
-
-func ListenIncomingRequest(c net.Conn) (Request, error) {
-	fmt.Fprint(os.Stdout, "listening to request ...\n")
-	return readRequest(c)
-}
-
-// reads bytes( of arbitary length) from reader
-// first two byte is the request code
-// second two byte is the length of request header bytes
-func readRequest(c io.Reader) (*ftpRequest, error) {
-	// read (4 bytes) request type and headers len
-	buf := make([]byte, 4)
-	n, err := c.Read(buf)
-	if n != 4 || err != nil {
-		return nil, errors.New("error parsing request")
-	}
-	code, headerLen := binary.BigEndian.Uint16(buf[:2]), int(binary.BigEndian.Uint16(buf[2:]))
-
-	// read headers byte
-	headersBuf := make([]byte, headerLen)
-	_, err = c.Read(headersBuf)
+	req, err := ReadRequest(c)
 	if err != nil {
-		return nil, errors.New("error reading header")
+		// logError(" bad request", err)
+		return
+	}
+	fmt.Println(req)
+
+	// if err = handleRequest(req, c); err != nil {
+	// 	logError(" unable to handle request", err)
+	// }
+
+}
+
+func ReadRequest(c net.Conn) (Request, error) {
+	// fmt.Fprint(os.Stdout, "listening to request ...\n")
+	return readRequestResponse(c)
+}
+
+func readRequestResponse(c io.Reader) (RequestResponse, error) {
+
+	buf := make([]byte, 4)
+	if n, err := c.Read(buf); n != 4 || err != nil {
+		return nil, err
+	}
+	//sftpVersion, requestCode and headerLen
+	v, code, l := buf[0], buf[1], binary.BigEndian.Uint16(buf[2:])
+
+	// read Header byte
+	Header := make([]byte, l)
+	if n, err := c.Read(Header); err != nil && n != int(l) {
+		return nil, err
 	}
 
-	req := &ftpRequest{code, headersBuf, nil}
-	if !req.isValidRequest() {
-		return nil, errors.New("invalid request")
+	req := &ftpRequest{
+		version:   v,
+		code:      code,
+		HeaderLen: l,
+		header:    Header,
 	}
+
 	return req, nil
 }
 
-func handleRequest(req Request, c net.Conn) error {
+func WriteResponse(w io.Writer, r Response) error {
+	return writeReqRes(w, r)
+}
+
+func writeReqRes(w io.Writer, r RequestResponse) error {
+	data, err := r.MarshalBinary()
+	if err != nil {
+		return err
+	}
+	src := bytes.NewBuffer(data)
+	if _, err := io.Copy(w, src); err != nil {
+		return err
+	}
 	return nil
 }
 
-var commandCode = map[byte]string{
-	1: "Download",
-	2: "Upload",
-}
+// // func handleRequest(req Request, c net.Conn) error {
+// // 	return nil
+// // }
 
-var funcs = map[byte]func(c net.Conn, arg string){
-	1: sendFile,
-	2: recieveFile,
-}
+// // // var commandCode = map[byte]string{
+// // // 	1: "Download",
+// // // 	2: "Upload",
+// // // }
 
-func sendFile(c net.Conn, fileName string) {
-	f, err := os.Open(fileName)
-	if err != nil {
-		log.Fatal(err)
-	}
-	io.Copy(c, f)
-	f.Close()
-}
+// // // var funcs = map[byte]func(c net.Conn, arg string){
+// // // 	1: sendFile,
+// // // 	2: recieveFile,
+// // // }
 
-func recieveFile(conn net.Conn, fileName string) {
-	file, err := os.Create(fileName)
-	if err != nil {
-		conn.Close()
-		log.Fatal(err)
-	}
-	io.Copy(file, conn)
-}
+// // // func sendFile(c net.Conn, fileName string) {
+// // // 	f, err := os.Open(fileName)
+// // // 	if err != nil {
+// // // 		log.Fatal(err)
+// // // 	}
+// // // 	io.Copy(c, f)
+// // // 	f.Close()
+// // // }
 
-func listenForCommand(c net.Conn) (byte, string) {
-	cmd := make([]byte, 2)
-	c.Read(cmd)
-	arg := make([]byte, int(cmd[1]))
-	c.Read(arg)
-	return cmd[0], string(arg)
-}
+// // // func recieveFile(conn net.Conn, fileName string) {
+// // // 	file, err := os.Create(fileName)
+// // // 	if err != nil {
+// // // 		conn.Close()
+// // // 		log.Fatal(err)
+// // // 	}
+// // // 	io.Copy(file, conn)
+// // // }
 
-func listDir() []byte {
-	files, err := ioutil.ReadDir(".")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s\n", err)
-	}
-	info := ""
-	for _, file := range files {
-		info += file.Name()
-		info += " "
-	}
-	info += "\n"
-	return []byte(info)
+// // // func listenForCommand(c net.Conn) (byte, string) {
+// // // 	cmd := make([]byte, 2)
+// // // 	c.Read(cmd)
+// // // 	arg := make([]byte, int(cmd[1]))
+// // // 	c.Read(arg)
+// // // 	return cmd[0], string(arg)
+// // // }
 
-}
+// // // func listDir() []byte {
+// // // 	files, err := ioutil.ReadDir(".")
+// // // 	if err != nil {
+// // // 		fmt.Fprintf(os.Stderr, "%s\n", err)
+// // // 	}
+// // // 	info := ""
+// // // 	for _, file := range files {
+// // // 		info += file.Name()
+// // // 		info += " "
+// // // 	}
+// // // 	info += "\n"
+// // // 	return []byte(info)
