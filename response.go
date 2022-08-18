@@ -6,10 +6,12 @@ import (
 )
 
 const (
-	ResponseOk         = 0
-	StatusFileNotFound = 1
-	GetResponseCode    = 10
-	PutResponseCode    = 20
+	ResponseDownloadInfo  = 50
+	ResponseFileChunk    = 0
+	ResponseQueryAnswer  = 63
+	ResponseError        = 64
+	ResponseFileNotFound = 65
+	PutResponseCode      = 20
 )
 
 var CodeToResponse = map[int]string{
@@ -29,6 +31,7 @@ type Response interface {
 
 	// binary stream of Response
 	MarshalBinary() ([]byte, error)
+	Payload() []byte
 
 	// text representation of Response
 	String() string
@@ -42,7 +45,8 @@ type ftpResponse struct {
 	headersLen   uint16 // 2 byte
 
 	//header is a json encoded data
-	header []byte
+	header  []byte
+	payload []byte
 }
 
 func (r *ftpResponse) Code() int {
@@ -60,6 +64,10 @@ func (r *ftpResponse) Header() []byte {
 func (r *ftpResponse) MarshalBinary() ([]byte, error) {
 	return MarshalBinary(r)
 
+}
+
+func (r *ftpResponse) Payload() []byte {
+	return r.payload
 }
 
 func (r *ftpResponse) String() string {
@@ -85,6 +93,7 @@ func NewResponse(status int, h Header) (Response, error) {
 		ResponseCode: uint8(status),
 		headersLen:   uint16(len(headersByte)),
 		header:       headersByte,
+		payload:      nil,
 	}, nil
 
 }

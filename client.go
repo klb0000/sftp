@@ -28,16 +28,21 @@ func (c *Client) Close() {
 }
 
 func (c *Client) SendRequest(r Request) error {
-	return writeReqRes(c.conn, r)
+	_, err := writeReqRes(c.conn, r)
+	return err
 }
 
 func (c *Client) ReadResponse() (Response, error) {
 	return readRequestResponse(c.conn)
 }
 
+func (c *Client) GetFile(fname string) error {
+	return GetFile(fname, c.conn)
+}
+
 func (c *Client) RequestChunk(Filehash []byte, chunkNumber int) error {
 	req, err := NewRequest(
-		GetChunkRequest,
+		RequestGetChunk,
 		Header{
 			"Filehash":    string(Filehash),
 			"ChunkNumber": chunkNumber,
@@ -48,4 +53,11 @@ func (c *Client) RequestChunk(Filehash []byte, chunkNumber int) error {
 	}
 	return c.SendRequest(req)
 
+}
+
+func MakeRequest(c net.Conn, req Request) (Response, error) {
+	if _, err := writeReqRes(c, req); err != nil {
+		return nil, err
+	}
+	return readRequestResponse(c)
 }

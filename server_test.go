@@ -6,17 +6,6 @@ import (
 	"testing"
 )
 
-// func TestTmp(t *testing.T) {
-// 	Header := map[string]string{
-// 		"file": "tmp.txt",
-// 	}
-// 	HeaderBytes, _ := json.Marshal(Header)
-
-// 	r := ftpRequest{2, HeaderBytes, nil}
-// 	fmt.Println(r.ToBytes())
-// 	fmt.Println(r.Header())
-
-// }
 
 func TestReadRequest(t *testing.T) {
 	r, _ := NewGetRequest(
@@ -30,6 +19,8 @@ func TestReadRequest(t *testing.T) {
 	fmt.Println(req)
 
 }
+
+
 
 // func TestReadRequest(t *testing.T) {
 // 	buf := []byte{0, 1, 0, 2, 3, 5}

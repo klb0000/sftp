@@ -6,9 +6,11 @@ import (
 )
 
 const (
-	GetRequest      = 10
-	GetChunkRequest = 11
-	PutRequestCode  = 20
+	RequestGetChunk = 129
+	RequestGetFile  = 128
+	RequestPut      = 160
+	RequestDelete   = 192
+	RequestQuery    = 224
 )
 
 var CodeToRequest = map[int]string{
@@ -16,23 +18,6 @@ var CodeToRequest = map[int]string{
 	20: "put",
 }
 
-// 1. get/download
-// 2. upload/put
-// 3. list
-
-// get protocol
-// 1. client send request get
-// 2. server send response (ok) or (error: file not found)
-//  	if error: process stop
-//  	if ok: ok repsonse has metadata:
-// .    	Totalsize
-// chunk size
-// number of chunk
-// file hash
-// .
-// 3.1  client send request for first chunk
-// 3. 2: server send first chunk
-// 3. 3 : client send request for second chunk
 
 type Request interface {
 	//protocol version
@@ -49,17 +34,20 @@ type Request interface {
 
 	// text representation of request
 	String() string
+
+	Payload() []byte
 }
 
 // [version 1-byte][code 1-byte][HeaderLen 2-bytes][Header byte x-bytes]
 // implementation of Request
 type ftpRequest struct {
-	version    uint8  // 1 byte
-	code       uint8  // 1 byte
+	version   uint8  // 1 byte
+	code      uint8  // 1 byte
 	HeaderLen uint16 // 2 byte
 
 	//header is a json encoded data
-	header []byte
+	header  []byte
+	payload []byte
 }
 
 func (r *ftpRequest) Code() int {
@@ -78,6 +66,10 @@ func (r *ftpRequest) MarshalBinary() ([]byte, error) {
 	return MarshalBinary(r)
 }
 
+func (r *ftpRequest) Payload() []byte {
+	return r.payload
+}
+
 func (r *ftpRequest) String() string {
 	s := fmt.Sprintf("sftp %d %s", r.version, CodeToRequest[r.Code()])
 	var h Header
@@ -90,7 +82,7 @@ func (r *ftpRequest) String() string {
 }
 
 func NewGetRequest(h Header) (Request, error) {
-	return NewRequest(GetRequest, h)
+	return NewRequest(RequestGetChunk, h)
 
 }
 
@@ -102,10 +94,10 @@ func NewRequest(code int, h Header) (Request, error) {
 	}
 
 	return &ftpRequest{
-		version:    1,
-		code:       uint8(code),
+		version:   1,
+		code:      uint8(code),
 		HeaderLen: uint16(len(HeaderByte)),
-		header:     HeaderByte,
+		header:    HeaderByte,
 	}, nil
 }
 

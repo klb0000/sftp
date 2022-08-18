@@ -6,27 +6,6 @@ import (
 	"testing"
 )
 
-// func TestToBytes(t *testing.T) {
-// 	req := ftpRequest{
-// 		code:         300,
-// 		HeaderBytes: []byte{2, 3, 4, 5},
-// 		body:         []byte{3, 4, 4},
-// 	}
-
-// 	reqBytes, err := req.ToBytes()
-// 	if err != nil {
-// 		t.Error(err)
-// 		return
-// 	}
-
-// 	codeByte := make([]byte, 2)
-// 	binary.BigEndian.PutUint16(codeByte, req.code)
-// 	if !bytes.Equal(reqBytes[:2], codeByte) {
-// 		t.Error(" req code not same")
-// 	}
-
-// }
-
 var TestHeader = []Header{
 	{
 		"FileName":   "file.txt",
@@ -47,6 +26,9 @@ var TestHeader = []Header{
 	},
 }
 
+var GetRequest, _ = NewRequest(RequestGetFile, TestHeader[0])
+
+
 func TestMarshalBinary(t *testing.T) {
 	var tests = []Header{TestHeader[0], TestHeader[1]}
 	for i := range tests {
@@ -59,7 +41,7 @@ func TestMarshalBinary(t *testing.T) {
 
 		b, _ := r.MarshalBinary()
 		Header, _ := h.MarshalJson()
-		if b[1] != GetRequest || len(Header) != int(binary.BigEndian.Uint16(b[2:5])) {
+		if b[1] != RequestGetChunk || len(Header) != int(binary.BigEndian.Uint16(b[2:5])) {
 			t.Error("error in binaryMarshalling")
 
 		}
@@ -87,6 +69,10 @@ func TestValidRequestHeader(t *testing.T) {
 	}
 
 }
+
+
+
+
 
 func TestMain(t *testing.T) {
 	req, _ := NewGetRequest(
