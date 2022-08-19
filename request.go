@@ -7,7 +7,7 @@ import (
 
 const (
 	RequestGetChunk = 129
-	RequestGetFile  = 128
+	RequestGetFile  = 28
 	RequestPut      = 160
 	RequestDelete   = 192
 	RequestQuery    = 224
@@ -17,7 +17,6 @@ var CodeToRequest = map[int]string{
 	10: "Get",
 	20: "put",
 }
-
 
 type Request interface {
 	//protocol version
@@ -34,8 +33,6 @@ type Request interface {
 
 	// text representation of request
 	String() string
-
-	Payload() []byte
 }
 
 // [version 1-byte][code 1-byte][HeaderLen 2-bytes][Header byte x-bytes]
@@ -72,7 +69,7 @@ func (r *ftpRequest) Payload() []byte {
 
 func (r *ftpRequest) String() string {
 	s := fmt.Sprintf("sftp %d %s", r.version, CodeToRequest[r.Code()])
-	var h Header
+	var h HeaderMap
 	json.Unmarshal(r.header, &h)
 	for k, v := range h {
 		s += fmt.Sprintf("\n%v: %v",
@@ -81,12 +78,12 @@ func (r *ftpRequest) String() string {
 	return s
 }
 
-func NewGetRequest(h Header) (Request, error) {
+func NewGetRequest(h HeaderMap) (Request, error) {
 	return NewRequest(RequestGetChunk, h)
 
 }
 
-func NewRequest(code int, h Header) (Request, error) {
+func NewRequest(code int, h HeaderMap) (Request, error) {
 
 	HeaderByte, err := h.MarshalJson()
 	if err != nil {
@@ -101,9 +98,9 @@ func NewRequest(code int, h Header) (Request, error) {
 	}, nil
 }
 
-func IsValidGetRequestHeader(h Header) bool {
-	fileName := h["FileName"]
-	hash := h["FileHash"]
+func IsValidGetRequestHeader(h HeaderMap) bool {
+	fileName := h[FileName]
+	hash := h[FileHash]
 	return !(fileName == nil && hash == nil)
 
 }

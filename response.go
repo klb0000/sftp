@@ -3,18 +3,18 @@ package sftp
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 )
 
 const (
-	ResponseDownloadInfo  = 50
-	ResponseFileChunk    = 0
-	ResponseQueryAnswer  = 63
+	ResponseGetOk        = 0
 	ResponseError        = 64
 	ResponseFileNotFound = 65
-	PutResponseCode      = 20
 )
 
 var CodeToResponse = map[int]string{
+	0:  "GetOK",
+	65: "FileNotFound",
 	10: "Get",
 	20: "put",
 }
@@ -31,7 +31,6 @@ type Response interface {
 
 	// binary stream of Response
 	MarshalBinary() ([]byte, error)
-	Payload() []byte
 
 	// text representation of Response
 	String() string
@@ -71,8 +70,8 @@ func (r *ftpResponse) Payload() []byte {
 }
 
 func (r *ftpResponse) String() string {
-	s := fmt.Sprintf("sftp %d Response %s\n", r.version, CodeToResponse[r.Code()])
-	var h Header
+	s := fmt.Sprintf("sftp %d %s\n", r.version, CodeToResponse[r.Code()])
+	var h HeaderMap
 	json.Unmarshal(r.header, &h)
 	for k, v := range h {
 		s += fmt.Sprintf("%v: %v\n",
@@ -81,7 +80,7 @@ func (r *ftpResponse) String() string {
 	return s
 }
 
-func NewResponse(status int, h Header) (Response, error) {
+func NewResponse(status int, h HeaderMap) (Response, error) {
 
 	headersByte, err := h.MarshalJson()
 	if err != nil {
@@ -95,6 +94,23 @@ func NewResponse(status int, h Header) (Response, error) {
 		header:       headersByte,
 		payload:      nil,
 	}, nil
+
+}
+
+func newResponse(status int, h HeaderMap) Response {
+
+	headersByte, err := h.MarshalJson()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return &ftpResponse{
+		version:      1,
+		ResponseCode: uint8(status),
+		headersLen:   uint16(len(headersByte)),
+		header:       headersByte,
+		payload:      nil,
+	}
 
 }
 
