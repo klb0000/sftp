@@ -2,35 +2,32 @@ package sftp
 
 import (
 	"encoding/binary"
-	"fmt"
 	"testing"
 )
 
-var TestHeader = []Header{
+var TestHeader = []HeaderMap{
 	{
-		"FileName":   "file.txt",
-		"FileHash":   nil,
-		"Compress":   false,
-		"encrpytion": "AES",
+		FileName:    "file.txt",
+		FileHash:    nil,
+		Compression: false,
 	},
 	{
-		"FileName": nil,
-		"FileHash": "2a6266cd228e2f88999c",
-		"Compress": true,
+		FileName:    nil,
+		FileHash:    "2a6266cd228e2f88999c",
+		Compression: true,
 	},
 	{
 
-		"FileName": nil,
-		"FileHash": nil,
-		"Compress": true,
+		FileName:    nil,
+		FileHash:    nil,
+		Compression: true,
 	},
 }
 
 var GetRequest, _ = NewRequest(RequestGetFile, TestHeader[0])
 
-
 func TestMarshalBinary(t *testing.T) {
-	var tests = []Header{TestHeader[0], TestHeader[1]}
+	var tests = []HeaderMap{TestHeader[0], TestHeader[1]}
 	for i := range tests {
 		h := tests[i]
 		r, err := NewGetRequest(h)
@@ -45,15 +42,15 @@ func TestMarshalBinary(t *testing.T) {
 			t.Error("error in binaryMarshalling")
 
 		}
-		fmt.Println(r)
-		fmt.Println(string(Header))
-		fmt.Println(b)
+		// fmt.Println(r)
+		// fmt.Println(string(Header))
+		// fmt.Println(b)
 	}
 }
 
 func TestValidRequestHeader(t *testing.T) {
 	var tests = []struct {
-		input    Header
+		input    HeaderMap
 		expected bool
 	}{
 		{TestHeader[0], true},
@@ -67,22 +64,5 @@ func TestValidRequestHeader(t *testing.T) {
 				tests[i].input, tests[i].expected, got)
 		}
 	}
-
-}
-
-
-
-
-
-func TestMain(t *testing.T) {
-	req, _ := NewGetRequest(
-		Header{
-			"FileName":    "file.mov",
-			"hash":        "212ab323c3ef23fs323j9",
-			"Encryption":  nil,
-			"Compression": nil,
-		},
-	)
-	fmt.Println(req)
 
 }

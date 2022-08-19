@@ -2,25 +2,24 @@ package sftp
 
 import (
 	"bytes"
-	"fmt"
 	"testing"
 )
 
-
 func TestReadRequest(t *testing.T) {
 	r, _ := NewGetRequest(
-		Header{
-			"FileName":    "file.txt",
-			"Compression": nil,
+		HeaderMap{
+			FileName:    "file.txt",
+			Compression: nil,
 		},
 	)
 	data, _ := r.MarshalBinary()
 	req, _ := readRequestResponse(bytes.NewReader(data))
-	fmt.Println(req)
+	rData, _ := req.MarshalBinary()
+	if !bytes.Equal(data, rData) {
+		t.Error("invalid request data")
 
+	}
 }
-
-
 
 // func TestReadRequest(t *testing.T) {
 // 	buf := []byte{0, 1, 0, 2, 3, 5}

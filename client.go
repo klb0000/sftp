@@ -1,12 +1,16 @@
 package sftp
 
 import (
-	"fmt"
+	"errors"
+	"log"
 	"net"
 )
 
+var FileNotFoundResponse = newResponse(ResponseFileNotFound, nil)
+var ErrorInvalidFileName = errors.New("inavlid file name")
+
 type Client struct {
-	conn net.Conn
+	Conn net.Conn
 }
 
 func NewSFTPClient() (*Client, error) {
@@ -18,46 +22,41 @@ func (c *Client) Connect(addr string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("connected to server %v", conn)
-	c.conn = conn
+	c.Conn = conn
 	return nil
 }
 
 func (c *Client) Close() {
-	c.conn.Close()
+	c.Conn.Close()
 }
 
 func (c *Client) SendRequest(r Request) error {
-	_, err := writeReqRes(c.conn, r)
+	_, err := writeReqRes(c.Conn, r)
 	return err
 }
 
 func (c *Client) ReadResponse() (Response, error) {
-	return readRequestResponse(c.conn)
+	return readRequestResponse(c.Conn)
 }
 
 func (c *Client) GetFile(fname string) error {
-	return GetFile(fname, c.conn)
+	return GetFile(fname, c.Conn)
 }
 
-func (c *Client) RequestChunk(Filehash []byte, chunkNumber int) error {
-	req, err := NewRequest(
-		RequestGetChunk,
-		Header{
-			"Filehash":    string(Filehash),
-			"ChunkNumber": chunkNumber,
-		},
-	)
-	if err != nil {
-		return err
-	}
-	return c.SendRequest(req)
-
-}
 
 func MakeRequest(c net.Conn, req Request) (Response, error) {
 	if _, err := writeReqRes(c, req); err != nil {
 		return nil, err
 	}
 	return readRequestResponse(c)
+}
+
+func GetFile(fname string, c net.Conn) error {
+
+	req, err := NewRequest(RequestGetFile, NewGetFileHeader(fname))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return WriteRequest(c, req)
 }

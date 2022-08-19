@@ -2,7 +2,8 @@ package sftp
 
 import (
 	"bytes"
-	"os"
+	"compress/gzip"
+	"io"
 	"testing"
 )
 
@@ -58,7 +59,16 @@ func TestReadCodeAndHeaderLen(t *testing.T) {
 	}
 }
 
-func TestWriteFile(t *testing.T) {
-	path := "readWrite.go"
-	WriteFile(path, os.Stdout)
+// func TestWriteFile(t *testing.T) {
+// 	path := "readWrite.go"
+// 	WriteFile(path, os.Stdout)
+// }
+
+func TestCompressWrite(t *testing.T) {
+	data := []byte("this is a uncompressed data")
+	r := bytes.NewBuffer(data)
+	var w bytes.Buffer
+	gr := gzip.NewWriter(&w)
+	io.Copy(gr, r)
+	// fmt.Println(w.Bytes())
 }

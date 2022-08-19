@@ -19,6 +19,19 @@ func ReadRequest(c net.Conn) (Request, error) {
 	return readRequestResponse(c)
 }
 
+func ReadResponse(stream net.Conn) (Response, error) {
+	c, hlen := readCodeAndHeaderLen(stream)
+	if c < 0 || hlen < 0 {
+		return nil, errors.New("error reading Request/Response code")
+	}
+	h, err := readHeader(stream, hlen)
+	if err != nil {
+		return nil, errors.New("error reading Request/Response code")
+	}
+	
+	return newResponse(c, toHeaderMap(h)), nil
+}
+
 func readRequestResponse(stream io.Reader) (RequestResponse, error) {
 
 	code, headerLen := readCodeAndHeaderLen(stream)
@@ -68,6 +81,15 @@ func readHeader(stream io.Reader, headerLen int) ([]byte, error) {
 	return hbytes, nil
 }
 
+// func writeToStream(dstStream io.Writer, srcStream io.Reader) (int64, error) {
+// 	return io.Copy(dstStream, srcStream)
+// }
+
+func WriteRequest(w io.Writer, r Request) error {
+	_, err := writeReqRes(w, r)
+	return err
+}
+
 func WriteResponse(w io.Writer, r Response) error {
 	_, err := writeReqRes(w, r)
 	return err
@@ -86,13 +108,21 @@ func writeReqRes(w io.Writer, r RequestResponse) (int, error) {
 	return int(n), nil
 }
 
-
-func WriteFile(path string, w io.Writer) error {
+func WriteFile(path string, dst io.Writer) error {
 	f, err := os.Open(path)
 	if err != nil {
+		WriteResponse(dst, FileNotFoundResponse)
 		return err
 	}
-	_, err = io.Copy(w, f)
+
+	WriteResponse(dst, newResponse(
+		ResponseGetOk,
+		HeaderMap{
+			"File_Name":   path,
+			"Compression": false,
+		},
+	))
+
+	_, err = io.Copy(dst, f)
 	return err
 }
-

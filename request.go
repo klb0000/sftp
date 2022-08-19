@@ -104,11 +104,3 @@ func IsValidGetRequestHeader(h HeaderMap) bool {
 	return !(fileName == nil && hash == nil)
 
 }
-
-// func (r *ftpRequest) Body() []byte {
-// 	return r.body
-// }
-// func (r *ftpRequest) isValidRequest() bool {
-// 	//TODO
-// 	return true
-// }
