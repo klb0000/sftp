@@ -18,6 +18,24 @@ func ReadRequest(c net.Conn) (Request, error) {
 	// fmt.Fprint(os.Stdout, "listening to request ...\n")
 	return readRequestResponse(c)
 }
+// type that statisfies both request and response
+type RequestResponse interface {
+	//protocol version
+	Version() int
+
+	// request code
+	Code() int
+
+	//json encoded byte
+	Header() []byte
+
+	// binary stream of request
+	MarshalBinary() ([]byte, error)
+
+	// text representation of request
+	String() string
+}
+
 
 func ReadResponse(stream net.Conn) (Response, error) {
 	c, hlen := readCodeAndHeaderLen(stream)
@@ -28,7 +46,7 @@ func ReadResponse(stream net.Conn) (Response, error) {
 	if err != nil {
 		return nil, errors.New("error reading Request/Response code")
 	}
-	
+
 	return newResponse(c, toHeaderMap(h)), nil
 }
 

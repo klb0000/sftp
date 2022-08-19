@@ -7,11 +7,6 @@ import (
 	"os"
 )
 
-// type that statisfies both request and response
-type RequestResponse interface {
-	Request
-	Response
-}
 
 type Server interface {
 	net.Listener

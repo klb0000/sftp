@@ -20,20 +20,7 @@ var CodeToResponse = map[int]string{
 }
 
 type Response interface {
-	//protocol version
-	Version() int
-
-	// Response code
-	Code() int
-
-	//json encoded byte
-	Header() []byte
-
-	// binary stream of Response
-	MarshalBinary() ([]byte, error)
-
-	// text representation of Response
-	String() string
+	RequestResponse
 }
 
 // [version 1-byte][code 1-byte][headersLen 2-bytes][headers byte x-bytes]

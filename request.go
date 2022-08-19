@@ -19,20 +19,7 @@ var CodeToRequest = map[int]string{
 }
 
 type Request interface {
-	//protocol version
-	Version() int
-
-	// request code
-	Code() int
-
-	//json encoded byte
-	Header() []byte
-
-	// binary stream of request
-	MarshalBinary() ([]byte, error)
-
-	// text representation of request
-	String() string
+	RequestResponse
 }
 
 // [version 1-byte][code 1-byte][HeaderLen 2-bytes][Header byte x-bytes]
